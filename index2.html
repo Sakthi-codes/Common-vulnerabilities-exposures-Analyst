@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cybersecurity RAG Analyst</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar for better look */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+
+        /* Ensure smooth transitions */
+        .transition-all { transition: all 0.3s ease-in-out; }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        'primary': '#0D47A1',
+                        'secondary': '#1565C0',
+                        'accent': '#FFC107',
+                        'bg-dark': '#1F2937',
+                        'bg-light': '#F9FAFB',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-bg-light font-sans min-h-screen p-4 md:p-8">
+
+    <div class="max-w-4xl mx-auto">
+        
+        <header class="text-center mb-10">
+            <h1 class="text-4xl md:text-5xl font-extrabold text-primary mb-2">
+                Cybersecurity Analyst
+            </h1>
+            <p class="text-gray-600 text-lg">
+                Query the NVD and generate analysis using a local LLM (Ollama)
+            </p>
+        </header>
+
+        <!-- Input Card -->
+        <div class="bg-white p-6 md:p-8 rounded-xl shadow-2xl mb-8 border border-gray-100">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-4 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-secondary mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Input Query
+            </h2>
+            
+            <div class="mb-4">
+                <label for="keywordInput" class="block text-sm font-medium text-gray-700 mb-1">
+                    NVD Search Keyword (e.g., 'Log4j', 'Redis', 'CVE-2021-44228')
+                </label>
+                <input type="text" id="keywordInput" placeholder="Enter keyword to search NVD" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary transition-all shadow-inner" value="Log4j">
+            </div>
+
+            <div class="mb-6">
+                <label for="questionInput" class="block text-sm font-medium text-gray-700 mb-1">
+                    Analysis Question (for the LLM)
+                </label>
+                <textarea id="questionInput" rows="3" placeholder="Ask a question about the retrieved CVEs (e.g., 'What is the highest severity vulnerability and how can I mitigate it?')" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary transition-all shadow-inner">Summarize the key findings and provide mitigation advice.</textarea>
+            </div>
+
+            <button id="analyzeButton" onclick="startAnalysis()" class="w-full md:w-auto px-6 py-3 bg-secondary text-white font-bold rounded-full hover:bg-primary transition-all duration-300 shadow-md hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-secondary focus:ring-opacity-50 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.893 3.483l4.032 4.032a1 1 0 01-1.414 1.414l-4.032-4.032A6 6 0 012 8z" clip-rule="evenodd" />
+                </svg>
+                Run Cybersecurity Analysis
+            </button>
+        </div>
+
+        <!-- Output Cards -->
+        <div id="loadingIndicator" class="hidden text-center p-6 bg-accent/10 rounded-xl shadow-lg border border-accent/20">
+            <div class="flex items-center justify-center space-x-2">
+                <div class="w-4 h-4 rounded-full bg-secondary animate-pulse"></div>
+                <div class="w-4 h-4 rounded-full bg-secondary animate-pulse" style="animation-delay: 0.2s;"></div>
+                <div class="w-4 h-4 rounded-full bg-secondary animate-pulse" style="animation-delay: 0.4s;"></div>
+                <span class="text-secondary font-semibold">Retrieving and Analyzing...</span>
+            </div>
+            <p class="text-sm text-gray-500 mt-2">Checking NVD and consulting local LLM on port 5000.</p>
+        </div>
+        
+        <div id="resultsContainer" class="space-y-6">
+            
+            <!-- Context Output Card -->
+            <div id="contextCard" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-2xl border-l-4 border-accent">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-4 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-accent mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10m-4-7h8m-4-4v8m4-3h12a2 2 0 012 2v5a2 2 0 01-2 2H8a2 2 0 01-2-2v-5a2 2 0 012-2z" />
+                    </svg>
+                    Retrieved NVD Context
+                </h2>
+                <pre id="cveContextOutput" class="whitespace-pre-wrap p-4 bg-gray-50 text-gray-700 text-sm rounded-lg border border-gray-200 overflow-x-auto"></pre>
+            </div>
+
+            <!-- Answer Output Card -->
+            <div id="answerCard" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-2xl border-l-4 border-secondary">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-4 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-secondary mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    LLM Generated Analysis
+                </h2>
+                <div id="llmAnswerOutput" class="text-gray-800 leading-relaxed"></div>
+            </div>
+
+        </div>
+
+        <p id="errorBox" class="hidden mt-8 p-4 bg-red-100 text-red-700 border border-red-400 rounded-lg font-medium"></p>
+
+    </div>
+
+    <script>
+        const API_URL = "http://127.0.0.1:5000/api/analyze"; // Matches the Flask default port
+
+        const keywordInput = document.getElementById('keywordInput');
+        const questionInput = document.getElementById('questionInput');
+        const analyzeButton = document.getElementById('analyzeButton');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const errorBox = document.getElementById('errorBox');
+        
+        const contextCard = document.getElementById('contextCard');
+        const cveContextOutput = document.getElementById('cveContextOutput');
+        
+        const answerCard = document.getElementById('answerCard');
+        const llmAnswerOutput = document.getElementById('llmAnswerOutput');
+
+        function showElement(element) { element.classList.remove('hidden'); }
+        function hideElement(element) { element.classList.add('hidden'); }
+        function setStatus(loading, error = null) {
+            analyzeButton.disabled = loading;
+            if (loading) {
+                analyzeButton.innerHTML = '<div class="w-5 h-5 border-b-2 border-white rounded-full animate-spin mr-2"></div> Analyzing...';
+                showElement(loadingIndicator);
+                hideElement(errorBox);
+                hideElement(contextCard);
+                hideElement(answerCard);
+            } else {
+                analyzeButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.893 3.483l4.032 4.032a1 1 0 01-1.414 1.414l-4.032-4.032A6 6 0 012 8z" clip-rule="evenodd" /></svg>Run Cybersecurity Analysis';
+                hideElement(loadingIndicator);
+            }
+
+            if (error) {
+                errorBox.textContent = error;
+                showElement(errorBox);
+            } else {
+                hideElement(errorBox);
+            }
+        }
+
+        async function startAnalysis() {
+            const keyword = keywordInput.value.trim();
+            const question = questionInput.value.trim();
+
+            if (!keyword || !question) {
+                setStatus(false, "Please enter both a search keyword and an analysis question.");
+                return;
+            }
+
+            setStatus(true);
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ keyword, question }),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP Error! Status: ${response.status}`);
+                }
+
+                const result = await response.json();
+
+                if (!result.success && result.error) {
+                    setStatus(false, `API Error: ${result.error}`);
+                    return;
+                }
+                
+                // Display Context
+                cveContextOutput.textContent = result.cve_context;
+                showElement(contextCard);
+
+                // Display LLM Answer
+                llmAnswerOutput.innerHTML = result.final_answer.replace(/\n/g, '<br>'); // Simple formatting for readability
+                showElement(answerCard);
+
+                setStatus(false);
+
+            } catch (error) {
+                console.error("Analysis failed:", error);
+                setStatus(false, `Failed to connect to the backend (Flask server). Ensure 'app.py' is running and accessible on ${API_URL}. Details: ${error.message}`);
+            }
+        }
+    </script>
+</body>
+</html>
